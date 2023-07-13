@@ -4,10 +4,16 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from PyPDF2 import PdfReader
 from datetime import datetime
+import json
 
-dossier_surveillance = r"D:\Jouf\DEV\dossier-magique"
-mots_cles_employeur = ["tf1", "public sénat", "tiffany", "benjamin"]
-mots_cles_type_document = ["contrat", "fiche de paie", "résiliation", "compte"]
+dossier_surveillance = r"C:\Jouf\script-pierre\dossier-magique"
+
+# Charger les mots-clés depuis le fichier de configuration
+with open("config.json") as config_file:
+    config = json.load(config_file)
+
+mots_cles_employeur = config["mots_cles"]["employeur"]
+mots_cles_type_document = config["mots_cles"]["type_document"]
 
 # Obtenez les permissions actuelles du dossier
 permissions_actuelles = os.stat(dossier_surveillance).st_mode
@@ -38,7 +44,7 @@ def analyse_pdf(pdf_path):
                 texte += page.extract_text()
 
             employeur_trouve = False
-
+            
             for mot in mots_cles_employeur:
                 if mot.lower() in texte.lower():
                     employeur_trouve = True
@@ -57,11 +63,17 @@ def trier_fichier_pdf(pdf_path, employeur, texte, date_document):
     nom_fichier = os.path.basename(pdf_path)
     dossier_employeur = os.path.join(dossier_surveillance, employeur)
     dossier_type_document = ""
+    nb_mots_max = 0
 
-    for mot in mots_cles_type_document:
-        if mot.lower() in texte.lower():
-            dossier_type_document = mot
-            break
+    for theme, mots_cles in mots_cles_type_document.items():
+                nb_mots_theme = 0
+                for mot in mots_cles:
+                    if mot.lower() in texte.lower():
+                        nb_mots_theme += 1
+
+                if nb_mots_theme > nb_mots_max:
+                    nb_mots_max = nb_mots_theme
+                    dossier_type_document = theme
 
     if dossier_employeur:
         # Vérifier si le dossier employeur existe, sinon le créer
