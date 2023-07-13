@@ -1,0 +1,11 @@
+{
+    "mots_cles": {
+      "employeur": ["tf1", "public sénat", "tiffany", "benjamin"],
+      "type_document": {
+        "contrat": ["contrat", "durée", "indéterminée"],
+        "lettre-de-motivation": ["candidature", "motivation"],
+        "fiche-de-paie": ["salaire", "brut", "net"]
+      }
+    }
+  }
+  
