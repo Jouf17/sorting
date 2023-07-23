@@ -5,8 +5,8 @@ from watchdog.events import FileSystemEventHandler
 from PyPDF2 import PdfReader
 from datetime import datetime
 import json
-
-dossier_surveillance = r"C:\Jouf\script-pierre\dossier-magique"
+import sys
+from nomDossier import dossier_surveillance
 
 # Charger les mots-clés depuis le fichier de configuration
 with open("config.json") as config_file:

@@ -1,11 +1,12 @@
 {
-    "mots_cles": {
-      "employeur": ["tf1", "public sénat", "tiffany", "benjamin"],
-      "type_document": {
-        "contrat": ["contrat", "durée", "indéterminée"],
-        "lettre-de-motivation": ["candidature", "motivation"],
-        "fiche-de-paie": ["salaire", "brut", "net"]
-      }
+  "mots_cles": {
+    "employeur": ["tf1", "bewink", "smallBang", "Media 365", "StopNGo", "Public Sénat"],
+    "type_document": {
+      "A)Contrats": ["contrat", "durée", "indéterminée"],
+      "B)AEM": ["attestation", "prestation de travail", "authentification"],
+      "C)Fiche_de_paie": ["salaire", "bulletin","paie", "net"],
+      "D)Conges_spectacles": ["certificat","nb jours", "agrément"]
     }
   }
-  
+}
+
