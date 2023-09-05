@@ -1,0 +1,13 @@
+lecture pdf numérisés ... :
+
+# ocr
+installer tesseract-ocr
+pip install pytesseract
+pip install pillow
+
+# ces 2 la pas sûr
+https://imagemagick.org/script/download.php
+pip install wand
+
+# extraire l'image du pdf 
+pip install pdfplumber
