@@ -1,5 +1,3 @@
-##TODO : faire les else de la fonction tri
-##TODO : renommer le fichier
 ##TODO : faire la rechercher avec l'ocr numérisé
 ##TODO : essayer de trouver la date dans le doc en prio
 
@@ -55,66 +53,61 @@ def analyse_pdf(pdf_path):
 
             fichier_pdf.close()
             os.rename(pdf_path, nouveau_chemin)
-            print("Le fichier {} a été déplacé vers le dossier {}".format(nouveau_chemin))
+            # print("Le fichier {} a été déplacé vers le dossier {}".format(nouveau_chemin))
     
     except Exception as e:
         print("Une erreur s'est produite lors de l'analyse du PDF : {}".format(str(e)))
 
 def trier_fichier_pdf(pdf_path, texte, O_date_document):
-    nom_fichier = os.path.basename(pdf_path)
-    dossier_type_document = ""
     nb_mots_max = 0
+    employeur_nom = "Autre"
+    type_document = "X)Pas_de_type"
 
-    if O_date_document:
-        annee = O_date_document.strftime("%Y")
-        dossier_annee = os.path.join(dossier_surveillance, annee)
+    # Tri de la date
+    annee = O_date_document.strftime("%Y")
+    dossier_annee = os.path.join(dossier_surveillance, annee)
 
-        if dossier_annee:
-            if not os.path.exists(dossier_annee):
-                os.makedirs(dossier_annee)
+    if not os.path.exists(dossier_annee):
+        os.makedirs(dossier_annee)
 
-            numero_mois = O_date_document.month
-            mois = O_date_document.strftime("%B").capitalize()
-            mois = f"{numero_mois}_{mois}"
-            dossier_mois = os.path.join(dossier_annee, mois)
+    numero_mois = O_date_document.month
+    mois = O_date_document.strftime("%B").capitalize()
+    mois = f"{numero_mois}_{mois}"
+    dossier_mois = os.path.join(dossier_annee, mois)
+    
+    if not os.path.exists(dossier_mois):
+        os.makedirs(dossier_mois)
 
-            if dossier_mois:
-                if not os.path.exists(dossier_mois):
-                    os.makedirs(dossier_mois)
+    # Tri de l'employeur
+    for mot in mots_cles_employeur:
+        if mot.lower() in texte.lower():
+            employeur_nom = mot
+            break
 
-                employeur_nom = "Autre"
-                    
-                for mot in mots_cles_employeur:
-                    if mot.lower() in texte.lower():
-                        employeur_nom = mot
-                        break
+    dossier_employeur = os.path.join(dossier_mois, employeur_nom)
+    if not os.path.exists(dossier_employeur):
+        os.makedirs(dossier_employeur)
 
-                dossier_employeur = os.path.join(dossier_mois, employeur_nom)
+    # Tri du type
+    for theme, mots_cles in mots_cles_type_document.items():
+        nb_mots_theme = 0
+        for mot in mots_cles:
+            if mot.lower() in texte.lower():
+                nb_mots_theme += 1
 
-                if dossier_employeur:
-                    # Vérifier si le dossier employeur existe, sinon le créer
-                    if not os.path.exists(dossier_employeur):
-                        os.makedirs(dossier_employeur)
+        if nb_mots_theme > nb_mots_max:
+            nb_mots_max = nb_mots_theme
+            type_document = theme
 
-                    for theme, mots_cles in mots_cles_type_document.items():
-                        nb_mots_theme = 0
-                        for mot in mots_cles:
-                            if mot.lower() in texte.lower():
-                                nb_mots_theme += 1
+    nom_fichier = type_document[:2] + O_date_document.strftime("%d_%m_%Y") + '.pdf'
 
-                        if nb_mots_theme > nb_mots_max:
-                            nb_mots_max = nb_mots_theme
-                            type_document = theme
+    dossier_type_document = os.path.join(dossier_employeur, type_document)
+    if not os.path.exists(dossier_type_document):
+        os.makedirs(dossier_type_document)
 
-                    if type_document:
-                        dossier_type_document = os.path.join(dossier_employeur, type_document)
-                        # Vérifier si le dossier type de document existe dans le dossier employeur, sinon le créer
-                        if not os.path.exists(dossier_type_document):
-                            os.makedirs(dossier_type_document)
+    nouveau_chemin = os.path.join(dossier_type_document, nom_fichier) 
 
-                        nouveau_chemin = os.path.join(dossier_type_document, nom_fichier) 
-
-        return nouveau_chemin        
+    return nouveau_chemin        
 
 def extraire_date_document(pdf):
     date_str = pdf.metadata.get('/CreationDate')
