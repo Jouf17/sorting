@@ -1,6 +1,13 @@
 {
   "mots_cles": {
-    "employeur": ["tf1", "bewink", "smallBang", "Media 365", "StopNGo", "Public Sénat"],
+    "employeur": {
+      "tf1": ["tf1", "t f 1"],
+      "bewink": ["bewink"],
+      "smallBang": ["smallBang", "small Bang"],
+      "Media 365": ["Media 365", "Media365", "media 3 6 5", "m e d i a 3 6 5", "365 media", "3 6 5 m e d i a"],
+      "StopNGo": ["StopNGo"],
+      "Public Sénat": ["Public Sénat", "plublicsenat"]
+    },
     "type_document": {
       "A)Contrats": ["contrat", "durée", "indéterminée"],
       "B)AEM": ["attestation", "prestation de travail", "authentification"],

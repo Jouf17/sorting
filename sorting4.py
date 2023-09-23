@@ -1,7 +1,3 @@
-##TODO : faire la rechercher avec l'ocr numérisé
-##TODO : essayer de trouver la date dans le doc en prio
-##TODO : impossible de créer un fichier pdf déjà existant
-
 import os
 import time
 from watchdog.observers import Observer
@@ -11,11 +7,10 @@ import locale
 from datetime import datetime
 import json
 import pytesseract
-import sys
-import glob
 import pdfplumber
 import shutil
 import random
+import re
 
 from nomDossier import dossier_surveillance
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -55,42 +50,28 @@ def analyse_pdf(pdf_path):
             
             # Extraire la date du document
             O_date_document = extraire_date_document(pdf)
-
+            print(O_date_document, "date création pdt")
             texte_pdf = ""
             for page_num in range(len(pdf.pages)):
                 page = pdf.pages[page_num]
                 texte_pdf += page.extract_text()
 
         fichier_pdf.close()
-
-        print(texte_pdf, 'texte pdf')
         
         if texte_pdf == "":
-            texte_ocr = analyseOcr(pdf_path, O_date_document, ocr_termine)  # Utilisation du callback
-            # Utilisation de la fonction pour extraire le texte
-            print(attendreAnalyseOcr, "attendreAnalyseOcr")
-            #while attendreAnalyseOcr:  # Attendez que l'analyse OCR soit terminée
-                #pass
-            #print('boucle passée')
+            texte_ocr = analyseOcr(pdf_path, ocr_termine) 
             texte_pdf = texte_ocr
-            print(texte_pdf, "texte récupéré de l'analyse ocr")
+            date_texte = recherche_date_dans_texte(texte_pdf)
+            if date_texte:
+                O_date_document = date_texte
             nouveau_chemin = trier_fichier_pdf(texte_pdf, O_date_document)   
-            print(nouveau_chemin, 'nouveau chemin de analyse ocr')
             shutil.copy(pdf_path, nouveau_chemin)
         else:
+            date_texte = recherche_date_dans_texte(texte_pdf)
+            if date_texte:
+                O_date_document = date_texte
             nouveau_chemin = trier_fichier_pdf(texte_pdf, O_date_document)   
-            os.rename(pdf_path, nouveau_chemin)
-            
-        
-        # Utilisation de la fonction pour renommer le fichier
-        # if rename_file(pdf_path, nouveau_chemin):
-        #     print("Le fichier a été renommé avec succès.")
-        # else:
-        #     print("Le renommage du fichier a échoué après plusieurs tentatives.")
-        ##os.rename(pdf_path, nouveau_chemin)
-            # print("Le fichier {} a été déplacé vers le dossier {}".format(nouveau_chemin))
-
-        
+            os.rename(pdf_path, nouveau_chemin)            
     
     except Exception as e:
         print("Une erreur s'est produite lors de l'analyse du PDF : {}".format(str(e)))
@@ -98,9 +79,10 @@ def analyse_pdf(pdf_path):
     
 
 def trier_fichier_pdf(texte, O_date_document):
-    nb_mots_max = 0
-    employeur_nom = "Autre"
-    type_document = "X)Pas_de_type"
+    nb_mots_max_type_doc = 0
+    nb_mots_max_type_employeur = 0
+    employeur_nom = "Employeur_Inconnu"
+    type_document = "X)Type_Document_Inconnu"
 
     # Tri de la date
     annee = O_date_document.strftime("%Y")
@@ -108,25 +90,29 @@ def trier_fichier_pdf(texte, O_date_document):
 
     if not os.path.exists(dossier_annee):
         os.makedirs(dossier_annee)
-    print(dossier_annee, 'dossier annee')
+    
     numero_mois = O_date_document.month
     mois = O_date_document.strftime("%B").capitalize()
     mois = f"{numero_mois}_{mois}"
     dossier_mois = os.path.join(dossier_annee, mois)
-    print(dossier_mois, 'dossier mois')
+    
     if not os.path.exists(dossier_mois):
         os.makedirs(dossier_mois)
 
-    # Tri de l'employeur
-    for mot in mots_cles_employeur:
-        if mot.lower() in texte.lower():
-            employeur_nom = mot
-            break
+    for employeur, mots_cles in mots_cles_employeur.items():
+        nb_mots_employeur = 0
+        for mot in mots_cles:
+            if mot.lower() in texte.lower():
+                nb_mots_employeur += 1
 
+        if nb_mots_employeur > nb_mots_max_type_employeur:
+            nb_mots_max_type_employeur = nb_mots_employeur
+            employeur_nom = employeur
+    
     dossier_employeur = os.path.join(dossier_mois, employeur_nom)
     if not os.path.exists(dossier_employeur):
         os.makedirs(dossier_employeur)
-    print(dossier_employeur, 'dossier_employeur')
+    
     # Tri du type
     for theme, mots_cles in mots_cles_type_document.items():
         nb_mots_theme = 0
@@ -134,20 +120,20 @@ def trier_fichier_pdf(texte, O_date_document):
             if mot.lower() in texte.lower():
                 nb_mots_theme += 1
 
-        if nb_mots_theme > nb_mots_max:
-            nb_mots_max = nb_mots_theme
+        if nb_mots_theme > nb_mots_max_type_doc:
+            nb_mots_max_type_doc = nb_mots_theme
             type_document = theme
 
     nom_fichier = type_document[:2] + O_date_document.strftime("%d_%m_%Y") + '.pdf'
-    print(nom_fichier, 'nom_fichier')
+    
     dossier_type_document = os.path.join(dossier_employeur, type_document)
     if not os.path.exists(dossier_type_document):
         os.makedirs(dossier_type_document)
-    print(dossier_type_document, 'dossier_type_document')
+    
     nouveau_chemin = os.path.join(dossier_type_document, nom_fichier) 
-    print(nouveau_chemin, 'nouveau_chemin')
+    
     nouveau_chemin = renommer_pdf(nouveau_chemin, dossier_type_document)
-    print(nouveau_chemin, 'nouveau_chemin')
+    
     return nouveau_chemin        
 
 def extraire_date_document(pdf):
@@ -157,7 +143,7 @@ def extraire_date_document(pdf):
         return date
     return None
 
-def analyseOcr(pdf_file_path, O_date_document, callback):
+def analyseOcr(pdf_file_path, callback):
     global attendreAnalyseOcr
     # Créez un répertoire pour stocker les images extraites
     output_directory = "images_extraites"
@@ -166,35 +152,46 @@ def analyseOcr(pdf_file_path, O_date_document, callback):
     pdf = None  # Initialisation du lecteur PDF en dehors du bloc try
 
     try:
-        # Ouvrez le fichier PDF
-        pdf = pdfplumber.open(pdf_file_path)
-        texte_pdf = ""
-        # Parcourez chaque page du PDF
-        for page_number in range(len(pdf.pages)):
-            page = pdf.pages[page_number]
+        with pdfplumber.open(pdf_file_path) as pdf:
+            # Ouvrez le fichier PDF
+            texte_pdf = ""
+            # Parcourez chaque page du PDF
+            for page_number in range(len(pdf.pages)):
+                page = pdf.pages[page_number]
 
-            # Parcourez les images sur la page
-            for img_index, img in enumerate(page.images):
-                x0, y0, x1, y1 = img["x0"], img["y0"], img["x1"], img["y1"]
+                # Parcourez les images sur la page
+                for img_index, img in enumerate(page.images):
+                    x0, y0, x1, y1 = img["x0"], img["y0"], img["x1"], img["y1"]
 
-                # Convertir PageImage en image Pillow
-                page_image = page.to_image()
+                    # Convertir PageImage en image Pillow
+                    page_image = page.to_image()
 
-                # Obtenir l'image entière de la page
-                full_page_image = page_image.original
+                    # Obtenir l'image entière de la page
+                    full_page_image = page_image.original
 
-                # Découper la région de l'image
-                image = full_page_image.crop((x0, y0, x1, y1))
+                    # Découper la région de l'image
+                    image = full_page_image.crop((x0, y0, x1, y1))
 
-                # Enregistrez l'image extraite dans le répertoire de sortie
-                image_file_path = os.path.join(output_directory, f"page_{page_number + 1}_img_{img_index + 1}.png")
-                image.save(image_file_path, "PNG")
+                    # Enregistrez l'image extraite dans le répertoire de sortie
+                    image_file_path = os.path.join(output_directory, f"page_{page_number + 1}_img_{img_index + 1}.png")
+                    image.save(image_file_path, "PNG")
 
-                # Utiliser pytesseract pour extraire du texte de l'image
-                texte_pdf += pytesseract.image_to_string(image)
-                print(texte_pdf, "texte analyse OCR")
-                #print(f"Texte extrait de l'image {img_index + 1} de la page {page_number + 1}:\n{text}\n")
-        print('fini analyse OCR')
+                    # Utiliser pytesseract pour extraire du texte de l'image
+                    texte_pdf += pytesseract.image_to_string(image)
+
+        for fichier in os.listdir(output_directory):
+            path = os.path.join(output_directory, fichier)
+            if os.path.isfile(path):
+                os.remove(path)
+
+        
+        # os.system(f"taskkill /F /IM pdfplumber.exe")
+        
+        # for fichier in os.listdir(dossier_surveillance):
+        #     path = os.path.join(dossier_surveillance, fichier)
+        #     if os.path.isfile(path):
+        #         os.remove(path)
+
         pdf.close()
         callback()
         return texte_pdf
@@ -237,7 +234,54 @@ def renommer_pdf(fichier, dossier):
     # Le fichier n'existe pas déjà, on retourne le chemin d'origine.
     return fichier
 
+def recherche_date_dans_texte(texte_pdf):
+    date = False
+    
+    patterns = [
+        r'\b\d{2}/\d{2}/\d{4}\b',
+        r'\b\d{2}/\d{2}/\d{2}\b',
+        r'\b\d{2}/\d{4}\b',
+        r'\b\d{2}/\d{2}\b',
+        r'\b\d{2} \d{2} \d{4}\b'
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, texte_pdf)
+        if match:
+            date = match.group()
+            break
 
+    if date:
+        if "/" in date:
+            date_parts = date.split('/')
+        elif " " in date:
+            date_parts = date.split(' ')
+        else:
+            raise ValueError("Format de date invalide")
+        
+        if len(date_parts) == 3:
+            jour = int(date_parts[0])
+            mois = int(date_parts[1])
+            annee = int(date_parts[2])
+        elif len(date_parts) == 2:
+            jour = 1  # Jour par défaut s'il est manquant
+            mois = int(date_parts[0])
+            annee = int(date_parts[1])
+        else:
+            raise ValueError("Format de date invalide")
+        if annee < 1000:
+            annee += 2000
+        date_convertie = datetime(annee, mois, jour).date()
+        date = date_convertie.strftime("%d/%m/%Y")
+        date = datetime.strptime(date, "%d/%m/%Y").date()
+        print(date, "date avant traitement")
+        if date.year >= 2012 and date.year <= 2050:
+            O_date_document = date
+        else:
+            O_date_document = False
+    else:
+        O_date_document = False
+    print(O_date_document, "date dans texte")
+    return O_date_document
 
 # Instanciation de l'observateur et de l'événement
 observer = Observer()
@@ -245,6 +289,11 @@ event_handler = MonEventHandler()
 
 # Ajout du dossier à surveiller à l'observateur
 observer.schedule(event_handler, dossier_surveillance, recursive=False)
+
+for fichier in os.listdir(dossier_surveillance):
+    path = os.path.join(dossier_surveillance, fichier)
+    if os.path.isfile(path):
+        os.remove(path)
 
 # Démarrage de l'observateur
 observer.start()
@@ -257,3 +306,4 @@ except KeyboardInterrupt:
 
 # Arrêt de l'observateur lorsque vous souhaitez terminer le script
 observer.join()
+
